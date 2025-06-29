@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <title>Instagram Non-Follower Checker</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+    />
+    <style>
+      body.dark-mode {
+        background-color: #121212 !important;
+        color: #e0e0e0;
+      }
+
+      body.dark-mode .card {
+        background-color: #1f1f1f;
+        color: #e0e0e0;
+      }
+
+      body.dark-mode .form-control,
+      body.dark-mode .form-label {
+        background-color: #2a2a2a;
+        color: #e0e0e0;
+      }
+
+      body.dark-mode .list-group-item {
+        background-color: #1f1f1f;
+        color: #e0e0e0;
+      }
+
+      body.dark-mode .btn-primary {
+        background-color: #3b82f6;
+        border-color: #3b82f6;
+      }
+
+      body.dark-mode .alert {
+        background-color: #2e2e2e;
+        color: #fff;
+        border-color: #444;
+      }
+
+      .drop-zone {
+        cursor: pointer;
+        transition: background-color 0.2s, border-color 0.2s, transform 0.1s;
+      }
+
+      .drop-zone.dragover {
+        background-color: #e9ecef !important;
+        border: 2px dashed #0d6efd !important;
+        color: #0d6efd !important;
+        transform: scale(1.02);
+      }
+
+      body.dark-mode .drop-zone {
+        background-color: #2a2a2a;
+        color: #ccc;
+      }
+
+      body.dark-mode .drop-zone.dragover {
+        background-color: #3a3a3a !important;
+        border: 2px dashed #3b82f6 !important;
+        color: #3b82f6 !important;
+      }
+    </style>
+  </head>
+  <body class="bg-light">
+    <div class="container py-5">
+      <div class="row justify-content-center">
+        <div class="col-md-8">
+          <div class="card shadow-sm">
+            <div class="card-body">
+              <div class="d-flex justify-content-end mb-3">
+                <div class="form-check form-switch">
+                  <input
+                    class="form-check-input"
+                    type="checkbox"
+                    id="darkModeToggle"
+                  />
+                  <label class="form-check-label" for="darkModeToggle"
+                    >Dark Mode</label
+                  >
+                </div>
+              </div>
+              <h3 class="card-title mb-4 text-center">
+                Instagram Non-Follower Checker
+              </h3>
+              <form id="uploadForm" enctype="multipart/form-data">
+                <!-- Followers File -->
+                <div class="mb-3">
+                  <label for="followers_file" class="form-label"
+                    >Followers JSON</label
+                  >
+                  <div
+                    id="followersDropZone"
+                    class="drop-zone border rounded p-4 text-center bg-body-tertiary"
+                  >
+                    <span id="followersLabel"
+                      >Drop followers_1.json here or click to upload</span
+                    >
+                    <input
+                      type="file"
+                      accept=".json,application/json"
+                      class="form-control d-none"
+                      id="followers_file"
+                      name="followers_file"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <!-- Following File -->
+                <div class="mb-3">
+                  <label for="following_file" class="form-label"
+                    >Following JSON</label
+                  >
+                  <div
+                    id="followingDropZone"
+                    class="drop-zone border rounded p-4 text-center bg-body-tertiary"
+                  >
+                    <span id="followingLabel"
+                      >Drop following.json here or click to upload</span
+                    >
+                    <input
+                      type="file"
+                      accept=".json,application/json"
+                      class="form-control d-none"
+                      id="following_file"
+                      name="following_file"
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div class="d-grid">
+                  <button type="submit" class="btn btn-primary">
+                    Check Now
+                  </button>
+                </div>
+              </form>
+              <div id="results" class="mt-4"></div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"></script>
+
+    <!-- Custom JS -->
+    <script>
+      document
+        .getElementById("uploadForm")
+        .addEventListener("submit", async function (e) {
+          e.preventDefault();
+
+          const form = e.target;
+          const formData = new FormData(form);
+          const resultsDiv = document.getElementById("results");
+          resultsDiv.innerHTML = `<div class="alert alert-info">Processing...</div>`;
+
+          try {
+            const response = await fetch("/api/check/", {
+              method: "POST",
+              body: formData,
+            });
+
+            const data = await response.json();
+            resultsDiv.innerHTML = "";
+
+            if (data.non_followers && data.non_followers.length > 0) {
+              resultsDiv.innerHTML = `<h5 class="mb-3">Accounts that don’t follow you back:</h5>`;
+              const listGroup = document.createElement("div");
+              listGroup.className = "list-group";
+
+              data.non_followers.forEach((user) => {
+                const link = document.createElement("a");
+                link.href = user.profile_url;
+                link.textContent = user.username;
+                link.className = "list-group-item list-group-item-action";
+                link.target = "_blank";
+                listGroup.appendChild(link);
+              });
+
+              resultsDiv.appendChild(listGroup);
+            } else {
+              resultsDiv.innerHTML = `<div class="alert alert-success">Everyone you follow follows you back 🎉</div>`;
+            }
+          } catch (err) {
+            resultsDiv.innerHTML = `<div class="alert alert-danger">Something went wrong. Please try again.</div>`;
+          }
+        });
+
+      // Setup drop zone
+      function setupDropZone(dropZoneId, inputId, labelId) {
+        const dropZone = document.getElementById(dropZoneId);
+        const fileInput = document.getElementById(inputId);
+        const label = document.getElementById(labelId);
+
+        // Check if file is JSON
+        function isJsonFile(file) {
+          return (
+            file.name.endsWith(".json") || file.type === "application/json"
+          );
+        }
+
+        function showError(message) {
+          label.textContent = message;
+          label.classList.add("text-danger");
+          setTimeout(() => {
+            label.classList.remove("text-danger");
+            label.textContent = dropZoneId.includes("followers")
+              ? "Drop followers_1.json here or click to upload"
+              : "Drop following.json here or click to upload";
+          }, 3000);
+        }
+
+        // Clicking drop zone triggers file input
+        dropZone.addEventListener("click", () => fileInput.click());
+
+        // Show visual highlight on dragover
+        dropZone.addEventListener("dragover", (e) => {
+          e.preventDefault();
+          dropZone.classList.add("dragover");
+        });
+
+        dropZone.addEventListener("dragleave", () => {
+          dropZone.classList.remove("dragover");
+        });
+
+        // Handle drop
+        dropZone.addEventListener("drop", (e) => {
+          e.preventDefault();
+          dropZone.classList.remove("dragover");
+
+          const file = e.dataTransfer.files[0];
+          if (file && isJsonFile(file)) {
+            fileInput.files = e.dataTransfer.files;
+            label.textContent = `Selected: ${file.name}`;
+          } else {
+            fileInput.value = ""; // clear input
+            showError("Invalid file. Please upload a .json file");
+          }
+        });
+
+        // Sync label when file selected manually
+        fileInput.addEventListener("change", () => {
+          const file = fileInput.files[0];
+          if (file && isJsonFile(file)) {
+            label.textContent = `Selected: ${file.name}`;
+          } else {
+            fileInput.value = "";
+            showError("Invalid file. Please upload a .json file");
+          }
+        });
+      }
+
+      setupDropZone("followersDropZone", "followers_file", "followersLabel");
+      setupDropZone("followingDropZone", "following_file", "followingLabel");
+
+      // Toggle dark mode
+      const toggle = document.getElementById("darkModeToggle");
+      const body = document.body;
+
+      // Load saved mode
+      const savedMode = localStorage.getItem("darkMode");
+      if (savedMode === "enabled") {
+        body.classList.add("dark-mode");
+        toggle.checked = true;
+      }
+
+      toggle.addEventListener("change", () => {
+        if (toggle.checked) {
+          body.classList.add("dark-mode");
+          localStorage.setItem("darkMode", "enabled");
+        } else {
+          body.classList.remove("dark-mode");
+          localStorage.setItem("darkMode", "disabled");
+        }
+      });
+    </script>
+  </body>
+</html>
